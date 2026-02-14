@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SADA Loop Disruption Response Agent | Blue Yonder AI Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Code+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --crimson: #dc2626;
+            --crimson-glow: rgba(220,38,38,0.3);
+            --emerald: #10b981;
+            --amber: #f59e0b;
+            --indigo: #6366f1;
+            --sky: #0ea5e9;
+            --pink: #ec4899;
+            --bg: #020617;
+            --bg-card: #0f172a;
+            --bg-el: #1e293b;
+            --text: #f8fafc;
+            --text-dim: #94a3b8;
+            --text-muted: #64748b;
+            --border: #334155;
+            --sada-grad: linear-gradient(135deg, #dc2626, #f59e0b, #10b981, #6366f1);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body {
+            font-family:'Outfit',sans-serif; background:var(--bg); color:var(--text);
+            min-height:100vh;
+            background-image:
+                radial-gradient(ellipse at 10% 90%, rgba(220,38,38,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 10%, rgba(99,102,241,0.05) 0%, transparent 50%);
+        }
+        .header {
+            background:rgba(15,23,42,0.88); backdrop-filter:blur(20px);
+            border-bottom:1px solid var(--border); padding:0.6rem 1.5rem;
+            position:sticky; top:0; z-index:100;
+        }
+        .header-inner { max-width:1800px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; }
+        .logo { display:flex; align-items:center; gap:0.7rem; }
+        .logo-icon {
+            width:44px; height:44px; background:var(--sada-grad); border-radius:11px;
+            display:flex; align-items:center; justify-content:center; font-size:1.4rem;
+            position:relative;
+        }
+        .logo-icon::after { content:''; position:absolute; inset:-3px; background:var(--sada-grad); border-radius:14px; z-index:-1; opacity:0.4; filter:blur(10px); }
+        .logo-title { font-size:1.3rem; font-weight:800; background:var(--sada-grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+        .logo-sub { font-size:0.55rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:3px; }
+        .badges { display:flex; gap:0.4rem; flex-wrap:wrap; }
+        .badge { background:var(--bg-card); border:1px solid var(--border); padding:0.3rem 0.65rem; border-radius:6px; font-size:0.62rem; color:var(--text-dim); font-family:'Source Code Pro',monospace; }
+        .badge.live { background:rgba(220,38,38,0.15); border-color:var(--crimson); color:var(--crimson); }
+        .badge.live::before { content:''; display:inline-block; width:6px; height:6px; background:var(--crimson); border-radius:50%; margin-right:5px; animation:pulse 1.5s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        .main { max-width:1800px; margin:0 auto; padding:1.25rem 1.5rem; }
+        .hero { text-align:center; margin-bottom:1.25rem; }
+        .hero h1 { font-size:2rem; font-weight:800; background:var(--sada-grad); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:0.3rem; }
+        .hero p { color:var(--text-dim); font-size:0.9rem; }
+
+        /* SADA Loop Indicator */
+        .sada-loop {
+            display:flex; justify-content:center; gap:0.4rem; margin-bottom:1.25rem;
+        }
+        .sada-step {
+            padding:0.5rem 1.25rem; border-radius:8px; font-size:0.8rem; font-weight:700;
+            border:2px solid var(--border); color:var(--text-muted); transition:all 0.4s;
+            display:flex; align-items:center; gap:0.4rem;
+        }
+        .sada-step.see { border-color:var(--crimson); color:var(--crimson); background:rgba(220,38,38,0.1); }
+        .sada-step.see.active { background:rgba(220,38,38,0.25); box-shadow:0 0 20px var(--crimson-glow); }
+        .sada-step.analyze { border-color:var(--amber); color:var(--amber); background:rgba(245,158,11,0.1); }
+        .sada-step.analyze.active { background:rgba(245,158,11,0.25); box-shadow:0 0 20px rgba(245,158,11,0.3); }
+        .sada-step.decide { border-color:var(--emerald); color:var(--emerald); background:rgba(16,185,129,0.1); }
+        .sada-step.decide.active { background:rgba(16,185,129,0.25); box-shadow:0 0 20px rgba(16,185,129,0.3); }
+        .sada-step.act { border-color:var(--indigo); color:var(--indigo); background:rgba(99,102,241,0.1); }
+        .sada-step.act.active { background:rgba(99,102,241,0.25); box-shadow:0 0 20px rgba(99,102,241,0.3); }
+        .sada-arrow { color:var(--text-muted); font-size:1.2rem; display:flex; align-items:center; }
+
+        .grid { display:grid; grid-template-columns:1fr 400px; gap:1.25rem; }
+        @media(max-width:1200px){ .grid{grid-template-columns:1fr;} }
+
+        .card { background:var(--bg-card); border:1px solid var(--border); border-radius:14px; overflow:hidden; }
+        .card-head { padding:0.85rem 1.15rem; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+        .card-head h3 { font-size:0.85rem; font-weight:700; display:flex; align-items:center; gap:0.5rem; }
+        .card-body { padding:1.15rem; }
+
+        /* Supply Chain Map */
+        .sc-map {
+            position:relative; background:var(--bg); border-radius:12px; height:340px;
+            border:1px solid rgba(220,38,38,0.12); overflow:hidden;
+        }
+        .sc-grid {
+            position:absolute; inset:0;
+            background-image:
+                linear-gradient(rgba(99,102,241,0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(99,102,241,0.03) 1px, transparent 1px);
+            background-size:35px 35px;
+        }
+        .sc-node {
+            position:absolute; text-align:center; cursor:pointer; transition:transform 0.3s;
+        }
+        .sc-node:hover { transform:scale(1.1); }
+        .sc-icon {
+            width:52px; height:52px; margin:0 auto 0.3rem; border-radius:12px;
+            display:flex; align-items:center; justify-content:center; font-size:1.5rem;
+            border:2px solid var(--emerald); background:rgba(16,185,129,0.1);
+            transition:all 0.5s;
+        }
+        .sc-node.disrupted .sc-icon {
+            border-color:var(--crimson); background:rgba(220,38,38,0.2);
+            animation:disruptPulse 1s infinite;
+        }
+        @keyframes disruptPulse { 0%,100%{box-shadow:0 0 0 0 var(--crimson-glow)} 50%{box-shadow:0 0 20px 5px var(--crimson-glow)} }
+        .sc-name { font-size:0.65rem; font-weight:600; }
+        .sc-status { font-size:0.55rem; font-family:'Source Code Pro',monospace; color:var(--text-muted); }
+
+        /* Connection lines */
+        .sc-svg { position:absolute; inset:0; pointer-events:none; }
+        .sc-line { stroke:var(--emerald); stroke-width:2; stroke-dasharray:6 4; opacity:0.4; }
+        .sc-line.disrupted { stroke:var(--crimson); opacity:0.8; animation:linePulse 1s infinite; }
+        @keyframes linePulse { 0%,100%{opacity:0.8} 50%{opacity:0.3} }
+
+        /* Disruption Events */
+        .disruption-panel { background:var(--bg-el); border-radius:10px; padding:0.85rem; margin-top:1rem; }
+        .dp-title { font-size:0.8rem; font-weight:600; margin-bottom:0.6rem; display:flex; align-items:center; gap:0.4rem; }
+        .dp-events { display:flex; flex-direction:column; gap:0.4rem; max-height:130px; overflow-y:auto; }
+        .dp-event {
+            display:flex; align-items:center; gap:0.6rem; padding:0.55rem 0.7rem;
+            background:var(--bg); border-radius:8px; border-left:3px solid var(--crimson);
+            animation:slideIn 0.3s;
+        }
+        .dp-event.resolved { border-left-color:var(--emerald); opacity:0.6; }
+        @keyframes slideIn { from{opacity:0;transform:translateX(-8px)} to{opacity:1;transform:translateX(0)} }
+        .dp-event-icon { font-size:1rem; }
+        .dp-event-text { flex:1; font-size:0.72rem; }
+        .dp-event-time { font-size:0.6rem; font-family:'Source Code Pro',monospace; color:var(--text-muted); }
+
+        /* Controls */
+        .controls { display:flex; gap:0.5rem; margin-top:1rem; }
+        .btn {
+            flex:1; padding:0.7rem; background:var(--bg-el); border:1px solid var(--border); border-radius:10px;
+            color:var(--text); font-family:'Outfit',sans-serif; font-size:0.78rem; font-weight:600;
+            cursor:pointer; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:0.4rem;
+        }
+        .btn:hover { border-color:var(--indigo); background:rgba(99,102,241,0.1); }
+        .btn.active { border-color:var(--indigo); background:rgba(99,102,241,0.2); color:var(--indigo); }
+        .btn.danger:hover { border-color:var(--crimson); background:rgba(220,38,38,0.1); }
+
+        /* Sidebar */
+        .sidebar { display:flex; flex-direction:column; gap:1rem; }
+
+        /* Agent Decision Card with RLHF */
+        .decision-card {
+            background:var(--bg-el); border-radius:12px; padding:1rem; border:1px solid var(--border);
+        }
+        .dc-header { display:flex; align-items:center; gap:0.6rem; margin-bottom:0.75rem; }
+        .dc-icon { width:42px; height:42px; background:var(--sada-grad); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; }
+        .dc-title { font-size:0.9rem; font-weight:700; }
+        .dc-sub { font-size:0.6rem; color:var(--text-muted); font-family:'Source Code Pro',monospace; }
+
+        .dc-proposal {
+            background:var(--bg); border-radius:8px; padding:0.75rem; margin-bottom:0.75rem;
+            border:1px solid rgba(99,102,241,0.2);
+        }
+        .dc-proposal-title { font-size:0.75rem; font-weight:600; color:var(--indigo); margin-bottom:0.3rem; }
+        .dc-proposal-text { font-size:0.7rem; color:var(--text-dim); line-height:1.5; }
+
+        .rlhf-buttons { display:flex; gap:0.5rem; }
+        .rlhf-btn {
+            flex:1; padding:0.6rem; border-radius:8px; font-family:'Outfit',sans-serif;
+            font-size:0.78rem; font-weight:600; cursor:pointer; transition:all 0.3s;
+            display:flex; align-items:center; justify-content:center; gap:0.3rem;
+        }
+        .rlhf-btn.approve { background:rgba(16,185,129,0.15); border:1px solid var(--emerald); color:var(--emerald); }
+        .rlhf-btn.approve:hover { background:rgba(16,185,129,0.3); }
+        .rlhf-btn.reject { background:rgba(220,38,38,0.15); border:1px solid var(--crimson); color:var(--crimson); }
+        .rlhf-btn.reject:hover { background:rgba(220,38,38,0.3); }
+        .rlhf-btn.modify { background:rgba(245,158,11,0.15); border:1px solid var(--amber); color:var(--amber); }
+        .rlhf-btn.modify:hover { background:rgba(245,158,11,0.3); }
+
+        /* Metrics */
+        .metrics-grid { display:grid; grid-template-columns:repeat(2,1fr); gap:0.5rem; }
+        .metric { background:var(--bg-el); border-radius:10px; padding:0.7rem; text-align:center; }
+        .metric-val { font-size:1.2rem; font-weight:700; font-family:'Source Code Pro',monospace; }
+        .metric-val.red { color:var(--crimson); }
+        .metric-val.green { color:var(--emerald); }
+        .metric-val.amber { color:var(--amber); }
+        .metric-val.indigo { color:var(--indigo); }
+        .metric-label { font-size:0.58rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.5px; }
+
+        /* RLHF History */
+        .rlhf-history { max-height:200px; overflow-y:auto; }
+        .rh-item {
+            display:flex; gap:0.5rem; padding:0.55rem 0.65rem; background:var(--bg-el);
+            border-radius:8px; margin-bottom:0.35rem; animation:slideIn 0.3s;
+        }
+        .rh-icon { font-size:0.9rem; }
+        .rh-content { flex:1; }
+        .rh-title { font-size:0.72rem; font-weight:600; }
+        .rh-meta { font-size:0.6rem; color:var(--text-muted); font-family:'Source Code Pro',monospace; }
+        .rh-badge {
+            font-size:0.6rem; padding:0.15rem 0.4rem; border-radius:4px; font-weight:600; align-self:center;
+        }
+        .rh-badge.approved { background:rgba(16,185,129,0.2); color:var(--emerald); }
+        .rh-badge.rejected { background:rgba(220,38,38,0.2); color:var(--crimson); }
+        .rh-badge.modified { background:rgba(245,158,11,0.2); color:var(--amber); }
+
+        /* Resilience Score */
+        .resilience { text-align:center; padding:0.75rem; }
+        .res-value { font-size:2.5rem; font-weight:900; font-family:'Source Code Pro',monospace; }
+        .res-bar { height:8px; background:var(--bg); border-radius:4px; overflow:hidden; margin:0.5rem 0; }
+        .res-fill { height:100%; border-radius:4px; transition:width 0.8s, background 0.8s; }
+        .res-label { font-size:0.65rem; color:var(--text-muted); }
+
+        .toast {
+            position:fixed; bottom:1.5rem; right:1.5rem; background:var(--bg-card); border:1px solid var(--border);
+            border-radius:12px; padding:0.8rem 1.15rem; display:flex; align-items:center; gap:0.6rem;
+            box-shadow:0 12px 40px rgba(0,0,0,0.6); transform:translateY(100px); opacity:0;
+            transition:all 0.4s cubic-bezier(0.4,0,0.2,1); z-index:999;
+        }
+        .toast.show { transform:translateY(0); opacity:1; }
+
+        .loading-overlay {
+            position:fixed; inset:0; background:rgba(2,6,23,0.97); display:none;
+            flex-direction:column; align-items:center; justify-content:center; z-index:1000;
+        }
+        .loading-overlay.active { display:flex; }
+        .sada-loader { display:flex; gap:0.75rem; margin-bottom:1.5rem; }
+        .sada-loader-step {
+            width:50px; height:50px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+            font-size:1.3rem; animation:sadaLoad 2s ease-in-out infinite;
+        }
+        .sada-loader-step:nth-child(1) { background:rgba(220,38,38,0.3); animation-delay:0s; }
+        .sada-loader-step:nth-child(2) { background:rgba(245,158,11,0.3); animation-delay:0.5s; }
+        .sada-loader-step:nth-child(3) { background:rgba(16,185,129,0.3); animation-delay:1s; }
+        .sada-loader-step:nth-child(4) { background:rgba(99,102,241,0.3); animation-delay:1.5s; }
+        @keyframes sadaLoad { 0%,100%{opacity:0.3;transform:scale(0.85)} 25%{opacity:1;transform:scale(1.1)} 50%{opacity:0.6;transform:scale(1)} }
+        .load-text { font-size:1rem; font-weight:700; margin-bottom:0.4rem; }
+        .load-sub { font-size:0.8rem; color:var(--text-muted); font-family:'Source Code Pro',monospace; margin-bottom:1.2rem; }
+        .load-bar { width:260px; height:4px; background:var(--bg-el); border-radius:2px; overflow:hidden; }
+        .load-fill { height:100%; background:var(--sada-grad); width:0%; transition:width 0.3s; }
+
+        ::-webkit-scrollbar { width:5px; }
+        ::-webkit-scrollbar-track { background:var(--bg); }
+        ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    </style>
+</head>
+<body>
+<header class="header">
+    <div class="header-inner">
+        <div class="logo">
+            <div class="logo-icon">🔄</div>
+            <div>
+                <div class="logo-title">SADA Loop Agent</div>
+                <div class="logo-sub">Blue Yonder AI Studio • Demo</div>
+            </div>
+        </div>
+        <div class="badges">
+            <span class="badge live">Monitoring</span>
+            <span class="badge">See→Analyze→Decide→Act</span>
+            <span class="badge">RLHF Enabled</span>
+            <span class="badge">PyTorch 2.3</span>
+        </div>
+    </div>
+</header>
+
+<main class="main">
+    <div class="hero">
+        <h1>🔄 SADA Loop Disruption Response Agent</h1>
+        <p>RL agent with human-in-the-loop feedback navigates supply chain disruptions using Blue Yonder's See → Analyze → Decide → Act framework</p>
+    </div>
+
+    <div class="sada-loop">
+        <div class="sada-step see" id="sadaSee">👁️ SEE</div>
+        <div class="sada-arrow">→</div>
+        <div class="sada-step analyze" id="sadaAnalyze">🔬 ANALYZE</div>
+        <div class="sada-arrow">→</div>
+        <div class="sada-step decide" id="sadaDecide">🧠 DECIDE</div>
+        <div class="sada-arrow">→</div>
+        <div class="sada-step act" id="sadaAct">⚡ ACT</div>
+    </div>
+
+    <div class="grid">
+        <div class="card">
+            <div class="card-head">
+                <h3>🌐 Supply Chain Network</h3>
+                <span style="font-size:0.65rem;color:var(--text-muted);font-family:'Source Code Pro'">8 nodes • live</span>
+            </div>
+            <div class="card-body">
+                <div class="sc-map" id="scMap">
+                    <div class="sc-grid"></div>
+                    <svg class="sc-svg" id="scSvg">
+                        <line class="sc-line" id="line01" x1="14%" y1="25%" x2="32%" y2="18%"/>
+                        <line class="sc-line" id="line12" x1="38%" y1="18%" x2="56%" y2="22%"/>
+                        <line class="sc-line" id="line23" x1="62%" y1="22%" x2="80%" y2="18%"/>
+                        <line class="sc-line" id="line04" x1="14%" y1="30%" x2="22%" y2="60%"/>
+                        <line class="sc-line" id="line45" x1="28%" y1="65%" x2="48%" y2="68%"/>
+                        <line class="sc-line" id="line56" x1="54%" y1="68%" x2="70%" y2="62%"/>
+                        <line class="sc-line" id="line37" x1="83%" y1="25%" x2="85%" y2="58%"/>
+                        <line class="sc-line" id="line67" x1="75%" y1="65%" x2="83%" y2="60%"/>
+                    </svg>
+                    <div class="sc-node" id="node0" style="left:5%;top:15%"><div class="sc-icon">🏭</div><div class="sc-name">Supplier A</div><div class="sc-status" id="nStatus0">Operational</div></div>
+                    <div class="sc-node" id="node1" style="left:27%;top:6%"><div class="sc-icon">🏭</div><div class="sc-name">Supplier B</div><div class="sc-status" id="nStatus1">Operational</div></div>
+                    <div class="sc-node" id="node2" style="left:50%;top:10%"><div class="sc-icon">🔧</div><div class="sc-name">Manufacturer</div><div class="sc-status" id="nStatus2">Operational</div></div>
+                    <div class="sc-node" id="node3" style="left:75%;top:8%"><div class="sc-icon">📦</div><div class="sc-name">Distribution</div><div class="sc-status" id="nStatus3">Operational</div></div>
+                    <div class="sc-node" id="node4" style="left:15%;top:52%"><div class="sc-icon">🚢</div><div class="sc-name">Port Hub</div><div class="sc-status" id="nStatus4">Operational</div></div>
+                    <div class="sc-node" id="node5" style="left:42%;top:56%"><div class="sc-icon">🚛</div><div class="sc-name">Transport</div><div class="sc-status" id="nStatus5">Operational</div></div>
+                    <div class="sc-node" id="node6" style="left:65%;top:52%"><div class="sc-icon">🏬</div><div class="sc-name">Warehouse</div><div class="sc-status" id="nStatus6">Operational</div></div>
+                    <div class="sc-node" id="node7" style="left:80%;top:48%"><div class="sc-icon">🛒</div><div class="sc-name">Retail</div><div class="sc-status" id="nStatus7">Operational</div></div>
+                </div>
+
+                <div class="disruption-panel">
+                    <div class="dp-title">⚠️ Active Disruptions</div>
+                    <div class="dp-events" id="dpEvents">
+                        <div style="color:var(--text-muted);font-size:0.75rem;text-align:center;padding:0.5rem;">No active disruptions</div>
+                    </div>
+                </div>
+
+                <div class="controls">
+                    <button class="btn" id="startBtn" onclick="toggleAgent()">
+                        <span id="sIcon">▶️</span> <span id="sText">Start Agent</span>
+                    </button>
+                    <button class="btn" onclick="resetAll()">🔄 Reset</button>
+                    <button class="btn danger" onclick="injectDisruption('port')">🚢 Port Closure</button>
+                    <button class="btn danger" onclick="injectDisruption('demand')">📈 Demand Spike</button>
+                    <button class="btn danger" onclick="injectDisruption('supplier')">🏭 Supplier Fail</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="card">
+                <div class="card-head"><h3>🧠 Agent Decision — RLHF</h3></div>
+                <div class="card-body">
+                    <div class="decision-card" id="decisionCard">
+                        <div class="dc-header">
+                            <div class="dc-icon">🤖</div>
+                            <div>
+                                <div class="dc-title">Awaiting Disruption...</div>
+                                <div class="dc-sub">Agent will propose actions when disruptions occur</div>
+                            </div>
+                        </div>
+                        <div class="dc-proposal" id="dcProposal" style="display:none">
+                            <div class="dc-proposal-title" id="dcPropTitle">Proposed Action</div>
+                            <div class="dc-proposal-text" id="dcPropText"></div>
+                        </div>
+                        <div class="rlhf-buttons" id="rlhfBtns" style="display:none">
+                            <button class="rlhf-btn approve" onclick="humanFeedback('approve')">✅ Approve</button>
+                            <button class="rlhf-btn modify" onclick="humanFeedback('modify')">✏️ Modify</button>
+                            <button class="rlhf-btn reject" onclick="humanFeedback('reject')">❌ Reject</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-head"><h3>📊 Network Health</h3></div>
+                <div class="card-body">
+                    <div class="metrics-grid">
+                        <div class="metric"><div class="metric-val green" id="mHealth">100%</div><div class="metric-label">Network Health</div></div>
+                        <div class="metric"><div class="metric-val amber" id="mDisruptions">0</div><div class="metric-label">Disruptions</div></div>
+                        <div class="metric"><div class="metric-val indigo" id="mResolved">0</div><div class="metric-label">Resolved</div></div>
+                        <div class="metric"><div class="metric-val red" id="mAvgResponse">—</div><div class="metric-label">Avg Response</div></div>
+                    </div>
+                    <div class="resilience" style="margin-top:0.75rem;">
+                        <div class="res-value" id="resScore" style="color:var(--emerald)">100</div>
+                        <div class="res-bar"><div class="res-fill" id="resFill" style="width:100%;background:var(--emerald)"></div></div>
+                        <div class="res-label">Supply Chain Resilience Score</div>
+                    </div>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-head"><h3>📋 RLHF Feedback History</h3><span style="font-size:0.6rem;color:var(--text-muted)" id="fbCount">0</span></div>
+                <div class="card-body">
+                    <div class="rlhf-history" id="rlhfHistory">
+                        <div style="color:var(--text-muted);font-size:0.75rem;text-align:center;padding:1rem;">No feedback yet</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<div class="loading-overlay" id="loadOverlay">
+    <div class="sada-loader">
+        <div class="sada-loader-step">👁️</div>
+        <div class="sada-loader-step">🔬</div>
+        <div class="sada-loader-step">🧠</div>
+        <div class="sada-loader-step">⚡</div>
+    </div>
+    <div class="load-text">Initializing SADA Loop Agent...</div>
+    <div class="load-sub" id="loadSub">Loading disruption model...</div>
+    <div class="load-bar"><div class="load-fill" id="loadFill"></div></div>
+</div>
+
+<div class="toast" id="toast">
+    <span style="font-size:1.2rem" id="toastIcon">✅</span>
+    <div><div style="font-size:0.8rem;font-weight:600" id="toastTitle">Done</div><div style="font-size:0.65rem;color:var(--text-muted)" id="toastMsg">msg</div></div>
+</div>
+
+<script>
+const NODES = ['Supplier A','Supplier B','Manufacturer','Distribution','Port Hub','Transport','Warehouse','Retail'];
+const LINES = [['line01',0,1],['line12',1,2],['line23',2,3],['line04',0,4],['line45',4,5],['line56',5,6],['line37',3,7],['line67',6,7]];
+
+const DISRUPTIONS = {
+    port: {icon:'🚢', title:'Port Closure', nodes:[4], desc:'Major port shutdown due to weather. Cargo delayed 5-7 days.'},
+    demand: {icon:'📈', title:'Demand Spike', nodes:[7,6], desc:'Unexpected 300% demand surge in retail. Inventory depleting rapidly.'},
+    supplier: {icon:'🏭', title:'Supplier Failure', nodes:[0,1], desc:'Primary suppliers offline due to equipment failure. No raw materials.'}
+};
+
+const PROPOSALS = {
+    port: [
+        {title:'Reroute via Air Freight', text:'Reroute critical shipments through air freight. Cost increase +45% but reduces delay from 7 days to 1 day. Prioritize high-margin SKUs only.', reward:+3.2},
+        {title:'Activate Backup Port', text:'Redirect all shipments to secondary port in Marseille. +2 day transit but maintains 80% throughput. Coordinate with 3 carriers.', reward:+2.1},
+    ],
+    demand: [
+        {title:'Dynamic Reallocation', text:'Pull inventory from 3 lowest-demand warehouses. Reallocate 2,400 units to high-demand zones. Estimated coverage: 72% of spike.', reward:+4.1},
+        {title:'Surge Manufacturing Order', text:'Trigger emergency production run. 48-hour turnaround for 5,000 units. Overtime cost +60% but captures full demand spike.', reward:+2.8},
+    ],
+    supplier: [
+        {title:'Activate Alt. Suppliers', text:'Switch to pre-qualified backup suppliers in Poland and Spain. Lead time increases from 3 to 8 days but maintains material flow.', reward:+3.5},
+        {title:'Deplete Safety Stock', text:'Draw down safety stock across all warehouses (30% reserve). Buys 12 days while negotiating with new suppliers.', reward:+1.4},
+    ]
+};
+
+let running = false, agentInterval = null, step = 0;
+let disruptions = 0, resolved = 0, responseTimes = [];
+let activeDisruptions = [];
+let currentProposal = null;
+let sadaPhase = -1;
+let feedbackEntries = [];
+let resilienceScore = 100;
+
+function toggleAgent() {
+    if(!running) {
+        const ov = document.getElementById('loadOverlay');
+        const bar = document.getElementById('loadFill');
+        const sub = document.getElementById('loadSub');
+        ov.classList.add('active');
+        const stages = ['Loading disruption model...','Initializing SADA framework...','Setting up reward signals...','Connecting to supply chain graph...','Configuring RLHF pipeline...','Agent ready!'];
+        let p=0,si=0;
+        const iv = setInterval(()=>{
+            p+=Math.random()*18+8; if(p>100) p=100;
+            bar.style.width=p+'%';
+            const ns=Math.floor((p/100)*stages.length);
+            if(ns!==si&&ns<stages.length){si=ns;sub.textContent=stages[si];}
+            if(p>=100){clearInterval(iv);setTimeout(()=>{ov.classList.remove('active');startAgent();},250);}
+        },70);
+    } else { stopAgent(); }
+}
+
+function startAgent() {
+    running=true;
+    document.getElementById('sIcon').textContent='⏸️';
+    document.getElementById('sText').textContent='Pause';
+    document.getElementById('startBtn').classList.add('active');
+    agentInterval = setInterval(agentStep, 2000);
+    toast('SADA Agent Active','Monitoring supply chain for disruptions');
+}
+
+function stopAgent() {
+    running=false;
+    document.getElementById('sIcon').textContent='▶️';
+    document.getElementById('sText').textContent='Resume';
+    document.getElementById('startBtn').classList.remove('active');
+    clearInterval(agentInterval);
+}
+
+function agentStep() {
+    step++;
+    // Random disruption
+    if(Math.random() > 0.8 && activeDisruptions.length < 2) {
+        const types = ['port','demand','supplier'];
+        injectDisruption(types[Math.floor(Math.random()*3)]);
+    }
+    // Process active disruptions through SADA
+    if(activeDisruptions.length > 0 && !currentProposal) {
+        processSADA(activeDisruptions[0]);
+    }
+    updateMetrics();
+}
+
+function injectDisruption(type) {
+    const d = DISRUPTIONS[type];
+    disruptions++;
+    activeDisruptions.push({type, startStep:step});
+    // Mark nodes
+    d.nodes.forEach(n => {
+        document.getElementById(`node${n}`).classList.add('disrupted');
+        document.getElementById(`nStatus${n}`).textContent = '⚠️ Disrupted';
+        document.getElementById(`nStatus${n}`).style.color = 'var(--crimson)';
+    });
+    // Mark lines
+    LINES.forEach(([id, from, to]) => {
+        if(d.nodes.includes(from) || d.nodes.includes(to)) {
+            document.getElementById(id).classList.add('disrupted');
+        }
+    });
+    // Add event
+    addDisruptionEvent(d.icon, d.title, d.desc);
+    resilienceScore = Math.max(10, resilienceScore - Math.floor(Math.random()*20+15));
+    updateResilience();
+    toast(`${d.icon} ${d.title}`, d.desc.substring(0,50)+'...');
+}
+
+function processSADA(disruption) {
+    const phases = ['see','analyze','decide','act'];
+    let phase = 0;
+    const phaseInterval = setInterval(() => {
+        // Clear all
+        document.querySelectorAll('.sada-step').forEach(s => s.classList.remove('active'));
+        document.getElementById(`sada${phases[phase].charAt(0).toUpperCase()+phases[phase].slice(1)}`).classList.add('active');
+
+        if(phase === 2) { // Decide phase — show proposal
+            const proposals = PROPOSALS[disruption.type];
+            currentProposal = proposals[Math.floor(Math.random()*proposals.length)];
+            currentProposal.disruption = disruption;
+            showProposal(currentProposal);
+        }
+
+        if(phase === 3) { // Act phase complete
+            clearInterval(phaseInterval);
+        }
+
+        phase++;
+        if(phase > 3) clearInterval(phaseInterval);
+    }, 800);
+}
+
+function showProposal(proposal) {
+    document.querySelector('.dc-title').textContent = 'Proposed: ' + proposal.title;
+    document.querySelector('.dc-sub').textContent = `Estimated reward: +${proposal.reward} | Step ${step}`;
+    document.getElementById('dcPropTitle').textContent = proposal.title;
+    document.getElementById('dcPropText').textContent = proposal.text;
+    document.getElementById('dcProposal').style.display = 'block';
+    document.getElementById('rlhfBtns').style.display = 'flex';
+}
+
+function humanFeedback(action) {
+    if(!currentProposal) return;
+    const d = currentProposal.disruption;
+    const type = d.type;
+
+    // Hide proposal UI
+    document.getElementById('dcProposal').style.display = 'none';
+    document.getElementById('rlhfBtns').style.display = 'none';
+    document.querySelector('.dc-title').textContent = 'Awaiting Next Disruption...';
+    document.querySelector('.dc-sub').textContent = 'Agent will propose actions when disruptions occur';
+
+    // Process feedback
+    let reward = currentProposal.reward;
+    if(action === 'reject') reward = -reward * 0.5;
+    if(action === 'modify') reward = reward * 0.7;
+
+    // Resolve disruption
+    if(action !== 'reject') {
+        resolved++;
+        responseTimes.push(step - d.startStep);
+        const dd = DISRUPTIONS[type];
+        dd.nodes.forEach(n => {
+            document.getElementById(`node${n}`).classList.remove('disrupted');
+            document.getElementById(`nStatus${n}`).textContent = 'Operational';
+            document.getElementById(`nStatus${n}`).style.color = '';
+        });
+        LINES.forEach(([id, from, to]) => {
+            if(dd.nodes.includes(from) || dd.nodes.includes(to)) {
+                document.getElementById(id).classList.remove('disrupted');
+            }
+        });
+        resilienceScore = Math.min(100, resilienceScore + Math.floor(Math.random()*10+5));
+        activeDisruptions.shift();
+    }
+
+    // Add to RLHF history
+    addFeedback(action, currentProposal.title, reward);
+    currentProposal = null;
+    updateResilience();
+    updateMetrics();
+
+    const labels = {approve:'✅ Approved',modify:'✏️ Modified',reject:'❌ Rejected'};
+    toast(labels[action], `Reward signal: ${reward >= 0 ? '+' : ''}${reward.toFixed(1)}`);
+}
+
+function addDisruptionEvent(icon, title, desc) {
+    const el = document.getElementById('dpEvents');
+    if(el.querySelector('div[style]')) el.innerHTML='';
+    const item = document.createElement('div');
+    item.className = 'dp-event';
+    item.innerHTML = `<span class="dp-event-icon">${icon}</span><span class="dp-event-text"><strong>${title}</strong> — ${desc.substring(0,60)}...</span><span class="dp-event-time">t=${step}</span>`;
+    el.insertBefore(item, el.firstChild);
+}
+
+function addFeedback(action, title, reward) {
+    const el = document.getElementById('rlhfHistory');
+    if(el.querySelector('div[style]')) el.innerHTML='';
+    const badges = {approve:'approved',modify:'modified',reject:'rejected'};
+    const icons = {approve:'✅',modify:'✏️',reject:'❌'};
+    const item = document.createElement('div');
+    item.className = 'rh-item';
+    item.innerHTML = `
+        <span class="rh-icon">${icons[action]}</span>
+        <div class="rh-content">
+            <div class="rh-title">${title}</div>
+            <div class="rh-meta">Reward: ${reward>=0?'+':''}${reward.toFixed(1)} • Step ${step}</div>
+        </div>
+        <span class="rh-badge ${badges[action]}">${action}</span>
+    `;
+    el.insertBefore(item, el.firstChild);
+    feedbackEntries.unshift(item);
+    if(feedbackEntries.length > 20) feedbackEntries.pop()?.remove();
+    document.getElementById('fbCount').textContent = feedbackEntries.length;
+}
+
+function updateMetrics() {
+    const health = Math.max(0, 100 - activeDisruptions.length * 25);
+    document.getElementById('mHealth').textContent = health + '%';
+    document.getElementById('mHealth').style.color = health > 70 ? 'var(--emerald)' : health > 40 ? 'var(--amber)' : 'var(--crimson)';
+    document.getElementById('mDisruptions').textContent = disruptions;
+    document.getElementById('mResolved').textContent = resolved;
+    if(responseTimes.length > 0) {
+        const avg = (responseTimes.reduce((a,b)=>a+b,0) / responseTimes.length * 2).toFixed(1);
+        document.getElementById('mAvgResponse').textContent = avg + 's';
+    }
+}
+
+function updateResilience() {
+    const el = document.getElementById('resScore');
+    const fill = document.getElementById('resFill');
+    el.textContent = resilienceScore;
+    el.style.color = resilienceScore > 70 ? 'var(--emerald)' : resilienceScore > 40 ? 'var(--amber)' : 'var(--crimson)';
+    fill.style.width = resilienceScore + '%';
+    fill.style.background = resilienceScore > 70 ? 'var(--emerald)' : resilienceScore > 40 ? 'var(--amber)' : 'var(--crimson)';
+}
+
+function resetAll() {
+    stopAgent(); step=0; disruptions=0; resolved=0; responseTimes=[]; activeDisruptions=[];
+    currentProposal=null; feedbackEntries=[]; resilienceScore=100;
+    for(let i=0;i<8;i++) {
+        document.getElementById(`node${i}`).classList.remove('disrupted');
+        document.getElementById(`nStatus${i}`).textContent='Operational';
+        document.getElementById(`nStatus${i}`).style.color='';
+    }
+    LINES.forEach(([id])=>document.getElementById(id).classList.remove('disrupted'));
+    document.querySelectorAll('.sada-step').forEach(s=>s.classList.remove('active'));
+    document.getElementById('dpEvents').innerHTML='<div style="color:var(--text-muted);font-size:0.75rem;text-align:center;padding:0.5rem;">No active disruptions</div>';
+    document.getElementById('rlhfHistory').innerHTML='<div style="color:var(--text-muted);font-size:0.75rem;text-align:center;padding:1rem;">No feedback yet</div>';
+    document.getElementById('dcProposal').style.display='none';
+    document.getElementById('rlhfBtns').style.display='none';
+    document.querySelector('.dc-title').textContent='Awaiting Disruption...';
+    document.querySelector('.dc-sub').textContent='Agent will propose actions when disruptions occur';
+    document.getElementById('fbCount').textContent='0';
+    updateMetrics(); updateResilience();
+    toast('🔄 Reset','All data cleared');
+}
+
+function toast(t,m) {
+    const el=document.getElementById('toast');
+    document.getElementById('toastTitle').textContent=t;
+    document.getElementById('toastMsg').textContent=m;
+    el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'),3000);
+}
+</script>
+</body>
+</html>
